@@ -32,6 +32,7 @@ set(MINECRAFT_CLIENT_SOURCES
   "Common/Audio/Consoles_SoundEngine.cpp"
   "Common/Audio/SoundEngine.cpp"
   "Common/Audio/SoundNames.cpp"
+  "Common/Audio/BinkDecoder.cpp"
   "Common/Colours/ColourTable.cpp"
   "Common/ConsoleGameMode.cpp"
   "Common/Console_Utils.cpp"
