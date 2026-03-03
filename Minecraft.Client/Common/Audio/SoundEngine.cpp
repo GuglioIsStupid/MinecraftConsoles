@@ -14,19 +14,17 @@
 #include <audioout.h>
 #endif
 
-#ifdef _WINDOWS64
 #include "..\..\Minecraft.Client\Windows64\Windows64_App.h"
-#endif
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 #include <vector>
 #include <memory>
 #include <mutex>
-
-#include "../Filesystem/Filesystem.h"
+#include "..\Filesystem\Filesystem.h"
 
 #ifdef __ORBIS__
 #include <audioout.h>
+//#define __DISABLE_MILES__			// MGH disabled for now as it crashes if we call sceNpMatching2Initialize
 #endif 
 
 // take out Orbis until they are done
@@ -60,7 +58,7 @@ void SoundEngine::playMusicTick() {};
 
 #else
 
-#ifdef _WINDOWS64 // todo: make this just search in Media instead
+#ifdef _WINDOWS64
 char SoundEngine::m_szSoundPath[]={"Windows64Media\\Sound\\"};
 char SoundEngine::m_szMusicPath[]={"music\\"};
 char SoundEngine::m_szRedistName[]={"redist64"};
@@ -123,7 +121,7 @@ char *SoundEngine::m_szStreamFileA[eStream_Max]=
 	"menu2",
 	"menu3",
 	"menu4",
-#endif	
+#endif
 
 	"piano1",
 	"piano2",
@@ -138,7 +136,7 @@ char *SoundEngine::m_szStreamFileA[eStream_Max]=
 	// The End
 	"the_end_dragon_alive",
 	"the_end_end",
-
+	
 	// CDs
 	"11",
 	"13",
@@ -211,7 +209,7 @@ void SoundEngine::updateMiniAudio()
 {
     if (m_validListenerCount == 1)
     {
-        for (size_t i = 0; i < MAX_LOCAL_PLAYERS; i++)
+        for (int i = 0; i < MAX_LOCAL_PLAYERS; i++)
         {
             if (m_ListenerA[i].bValid)
             {
@@ -272,23 +270,32 @@ void SoundEngine::updateMiniAudio()
         {
             if (m_validListenerCount > 1)
             {
-                float closest = 10000.0f;
+                float fClosest=10000.0f;
+				int iClosestListener=0;
+				float fClosestX=0.0f,fClosestY=0.0f,fClosestZ=0.0f,fDist;
+				for( int i = 0; i < MAX_LOCAL_PLAYERS; i++ )
+				{
+					if( m_ListenerA[i].bValid )
+					{
+						float x,y,z;
 
-                for (size_t i = 0; i < MAX_LOCAL_PLAYERS; i++)
-                {
-                    if (m_ListenerA[i].bValid)
-                    {
-                        float dx = fabs(m_ListenerA[i].vPosition.x - s->info.x);
-                        float dy = fabs(m_ListenerA[i].vPosition.y - s->info.y);
-                        float dz = fabs(m_ListenerA[i].vPosition.z - s->info.z);
+						x=fabs(m_ListenerA[i].vPosition.x-s->info.x);
+						y=fabs(m_ListenerA[i].vPosition.y-s->info.y);
+						z=fabs(m_ListenerA[i].vPosition.z-s->info.z);
+						fDist=x+y+z;
 
-                        float dist = dx + dy + dz;
-                        if (dist < closest)
-                            closest = dist;
-                    }
-                }
+						if(fDist<fClosest)
+						{
+							fClosest=fDist;
+							fClosestX=x;
+							fClosestY=y;
+							fClosestZ=z;
+							iClosestListener=i;
+						}
+					}
+				}
 
-                float realDist = sqrtf(closest * closest);
+                float realDist = sqrtf((fClosestX*fClosestX)+(fClosestY*fClosestY)+(fClosestZ*fClosestZ));
                 ma_sound_set_position(&s->sound, 0, 0, realDist);
             }
             else
@@ -305,10 +312,6 @@ void SoundEngine::updateMiniAudio()
     }
 }
 
-//#define DISTORTION_TEST
-#ifdef DISTORTION_TEST
-static float fVal=0.0f;
-#endif
 /////////////////////////////////////////////
 //
 //	tick
@@ -325,14 +328,10 @@ void SoundEngine::tick(shared_ptr<Mob> *players, float a)
 
 	// update the listener positions
 	int listenerCount = 0;
-#ifdef DISTORTION_TEST
-	float fX,fY,fZ;
-#endif
 	if( players )
 	{
 		bool bListenerPostionSet = false;
-
-		for( size_t i = 0; i < MAX_LOCAL_PLAYERS; i++ )
+		for( int i = 0; i < MAX_LOCAL_PLAYERS; i++ )
 		{
 			if( players[i] != NULL )
 			{
@@ -394,11 +393,9 @@ void SoundEngine::tick(shared_ptr<Mob> *players, float a)
 SoundEngine::SoundEngine()
 {
 	random = new Random();
-
 	memset(&m_engine, 0, sizeof(ma_engine));
     memset(&m_engineConfig, 0, sizeof(ma_engine_config));
     m_musicStreamActive = false;
-
 	m_StreamState=eMusicStreamState_Idle;
 	m_iMusicDelay=0;
 	m_validListenerCount=0; 
@@ -457,11 +454,7 @@ void SoundEngine::play(int iSound, float x, float y, float z, float volume, floa
 
     strcpy((char*)szSoundName, "Minecraft/");
 
-#ifdef DISTORTION_TEST
-    wstring name = wchSoundNames[eSoundType_MOB_ENDERDRAGON_GROWL];
-#else
     wstring name = wchSoundNames[iSound];
-#endif
 
     char* SoundName = (char*)ConvertSoundPathToName(name);
     strcat((char*)szSoundName, SoundName);
@@ -480,20 +473,22 @@ void SoundEngine::play(int iSound, float x, float y, float z, float volume, floa
     {
         int count = 0;
 
-        for (size_t i = 1; i < 32; i++)
+        for (int i = 1; i < 32; i++)
         {
             char numberedFolder[256];
             sprintf_s(numberedFolder, "%s%d", basePath, i);
 
-			bool exists = DirectoryExists(numberedFolder);
-			if(exists)
-			{
-				count++;
-			}
-			else
-			{
-				break;
-			}
+            DWORD attr = GetFileAttributesA(numberedFolder);
+
+            if (attr != INVALID_FILE_ATTRIBUTES &&
+                (attr & FILE_ATTRIBUTE_DIRECTORY))
+            {
+                count++;
+            }
+            else
+            {
+                break;
+            }
         }
 
         char chosenFolder[256];
@@ -511,16 +506,23 @@ void SoundEngine::play(int iSound, float x, float y, float z, float volume, floa
         char searchPattern[256];
         sprintf_s(searchPattern, "%s\\*.wav", chosenFolder);
 
-		char foundFile[256];
-		if (!GetFirstFileInDirectory(chosenFolder, foundFile, sizeof(foundFile)))
-		{
-			app.DebugPrintf("No .wav or .mp3 files found in %s\n", chosenFolder);
-			return;
-		}
+        WIN32_FIND_DATAA findData;
+        HANDLE hFind = FindFirstFileA(searchPattern, &findData);
 
+        if (hFind == INVALID_HANDLE_VALUE)
+        {
+            sprintf_s(searchPattern, "%s\\*.mp3", chosenFolder);
+            hFind = FindFirstFileA(searchPattern, &findData);
 
-        sprintf_s(finalPath, "%s\\%s", chosenFolder, foundFile);
+            if (hFind == INVALID_HANDLE_VALUE)
+            {
+                printf("No .wav or .mp3 files found in %s\n", chosenFolder);
+                return;
+            }
+        }
 
+        sprintf_s(finalPath, "%s\\%s", chosenFolder, findData.cFileName);
+        FindClose(hFind);
     }
 
     MiniAudioSound* s = new MiniAudioSound();
@@ -529,6 +531,7 @@ void SoundEngine::play(int iSound, float x, float y, float z, float volume, floa
 	s->info.x = x;
     s->info.y = y;
    	s->info.z = z;
+	
     s->info.volume = volume;
     s->info.pitch = pitch;
     s->info.bIs3D = true;
@@ -902,7 +905,7 @@ int SoundEngine::OpenStreamThreadProc(void* lpParameter)
     SoundEngine* soundEngine = (SoundEngine*)lpParameter;
 
 	const char* ext = strrchr(soundEngine->m_szStreamName, '.');
-
+    
     if (soundEngine->m_musicStreamActive)
     {
         ma_sound_stop(&soundEngine->m_musicStream);
@@ -920,6 +923,7 @@ int SoundEngine::OpenStreamThreadProc(void* lpParameter)
 
     if (result != MA_SUCCESS)
     {
+		app.DebugPrintf("SoundEngine::OpenStreamThreadProc - Failed to open stream: %s\n", soundEngine->m_szStreamName);
         return 0;
     }
 
@@ -947,6 +951,7 @@ void SoundEngine::playMusicTick()
 // AP - moved to a separate function so it can be called from the mixer callback on Vita
 void SoundEngine::playMusicUpdate() 
 {
+	//return;
 	static bool firstCall = true;
 	static float fMusicVol = 0.0f;
 	if( firstCall )
@@ -1178,21 +1183,24 @@ void SoundEngine::playMusicUpdate()
 			if (!m_musicStreamActive)
 			{
 				const char* currentExt = strrchr(reinterpret_cast<char*>(m_szStreamName), '.');
-				const bool isCD = (m_musicID >= m_iStream_CD_1);
-				const char* folder = isCD ? "cds/" : "music/";
-				
-				int n = sprintf_s(reinterpret_cast<char*>(m_szStreamName), 512, "%s%s%s.wav", m_szMusicPath, folder, m_szStreamFileA[m_musicID]);
-				
-				if (n > 0)
+				if (currentExt && _stricmp(currentExt, ".wav") == 0)
 				{
-					FILE* pFile = nullptr;
-					if (fopen_s(&pFile, reinterpret_cast<char*>(m_szStreamName), "rb") == 0 && pFile)
+					const bool isCD = (m_musicID >= m_iStream_CD_1);
+					const char* folder = isCD ? "cds/" : "music/";
+					
+					int n = sprintf_s(reinterpret_cast<char*>(m_szStreamName), 512, "%s%s%s.wav", m_szMusicPath, folder, m_szStreamFileA[m_musicID]);
+					
+					if (n > 0)
 					{
-						fclose(pFile);
-												
-						m_openStreamThread = new C4JThread(OpenStreamThreadProc, this, "OpenStreamThreadProc");
-						m_openStreamThread->Run();
-						break;
+						FILE* pFile = nullptr;
+						if (fopen_s(&pFile, reinterpret_cast<char*>(m_szStreamName), "rb") == 0 && pFile)
+						{
+							fclose(pFile);
+													
+							m_openStreamThread = new C4JThread(OpenStreamThreadProc, this, "OpenStreamThreadProc");
+							m_openStreamThread->Run();
+							break;
+						}
 					}
 				}
 				
@@ -1230,18 +1238,12 @@ void SoundEngine::playMusicUpdate()
 		}
 		break;
 	case eMusicStreamState_Stop:
-#ifdef _WINDOWS64
 		if (m_musicStreamActive)
 		{
 			ma_sound_stop(&m_musicStream);
 			ma_sound_uninit(&m_musicStream);
 			m_musicStreamActive = false;
 		}
-#else
-		AIL_pause_stream(m_hStream, 1);
-		AIL_close_stream(m_hStream);
-		m_hStream = 0;
-#endif
 
 		SetIsPlayingStreamingCDMusic(false);
 		SetIsPlayingStreamingGameMusic(false);
@@ -1367,7 +1369,7 @@ void SoundEngine::playMusicUpdate()
 				int iClosestListener = 0;
 				float fClosestDist = 1e6f;
 
-				for (size_t i = 0; i < MAX_LOCAL_PLAYERS; i++)
+				for (int i = 0; i < MAX_LOCAL_PLAYERS; i++)
 				{
 					if (m_ListenerA[i].bValid)
 					{
