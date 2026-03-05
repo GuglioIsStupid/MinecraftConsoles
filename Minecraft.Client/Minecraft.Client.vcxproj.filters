@@ -2101,6 +2101,9 @@
     <ClInclude Include="Common\Potion_Macros.h">
       <Filter>Common</Filter>
     </ClInclude>
+    <ClInclude Include="Common\PostProcesser.h">
+      <Filter>Common</Filter>
+    </ClInclude>
     <ClInclude Include="PS3\4JLibs\inc\4J_Input.h">
       <Filter>PS3\4JLibs\inc</Filter>
     </ClInclude>
@@ -4927,6 +4930,9 @@
       <Filter>Common\Source Files\DLC</Filter>
     </ClCompile>
     <ClCompile Include="Windows64\Windows64_Minecraft.cpp">
+      <Filter>Windows64\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Windows64\PostProcesser.cpp">
       <Filter>Windows64\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Windows64\KeyboardMouseInput.cpp">
