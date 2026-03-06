@@ -652,7 +652,6 @@ void SoundEngine::playUI(int iSound, float volume, float pitch)
     float finalVolume = volume * m_MasterEffectsVolume;
     if (finalVolume > 1.0f)
         finalVolume = 1.0f;
-	printf("UI Sound volume set to %f\nEffects volume: %f\n", finalVolume, m_MasterEffectsVolume);
 
     ma_sound_set_volume(&s->sound, finalVolume);
     ma_sound_set_pitch(&s->sound, pitch);
