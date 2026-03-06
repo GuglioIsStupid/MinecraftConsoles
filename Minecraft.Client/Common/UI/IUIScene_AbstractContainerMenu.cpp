@@ -1377,14 +1377,22 @@ bool IUIScene_AbstractContainerMenu::handleKeyDown(int iPad, int iAction, bool b
 					quickKeyHeld = TRUE;
 					if (IsSectionSlotList(m_eCurrSection))
 					{
-						ui.PlayUISFX(eSFX_Press);
+						int currentIndex = getCurrentIndex(m_eCurrSection) - getSectionStartOffset(m_eCurrSection);
+
+						bool bcanPlaySound = !isSlotEmpty(m_eCurrSection, currentIndex);
+						if (bcanPlaySound)
+							ui.PlayUISFX(eSFX_Press);
 					}
 				}
 			}
 			else {
 				if (IsSectionSlotList(m_eCurrSection))
 				{
-					ui.PlayUISFX(eSFX_Press);
+					int currentIndex = getCurrentIndex(m_eCurrSection) - getSectionStartOffset(m_eCurrSection);
+
+					bool bcanPlaySound = !isSlotEmpty(m_eCurrSection, currentIndex);
+					if (bcanPlaySound)
+						ui.PlayUISFX(eSFX_Press);
 				}
 				//
 			}
