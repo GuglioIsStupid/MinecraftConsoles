@@ -25,7 +25,7 @@
 #include <vector>
 #include <memory>
 #include <mutex>
-#include "..\Filesystem\Filesystem.h"
+#include <Filesystem\Filesystem.h>
 
 #ifdef __ORBIS__
 #include <audioout.h>
